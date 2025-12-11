@@ -20,11 +20,14 @@ export default function LoginPage() {
         setError("");
 
         try {
+            if (!auth) {
+                throw new Error("Firebase Authentication não está inicializado.");
+            }
             await signInWithEmailAndPassword(auth, email, password);
             router.push("/admin");
         } catch (err: any) {
             console.error(err);
-            setError("Erro ao fazer login. Verifique suas credenciais.");
+            setError("Erro ao fazer login. Verifique suas credenciais ou a configuração do sistema.");
         } finally {
             setLoading(false);
         }
