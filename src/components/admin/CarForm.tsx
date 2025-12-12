@@ -1,14 +1,19 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/Button";
 import { CloudinaryUploader } from "@/components/admin/CloudinaryUploader";
 import { db } from "@/lib/firebase";
-import { collection, addDoc } from "firebase/firestore";
+import { collection, addDoc, doc, updateDoc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
-import { Sparkle, Car as CarIcon } from "@phosphor-icons/react";
+import { Sparkle, Car as CarIcon, FloppyDisk } from "@phosphor-icons/react";
+import { Car } from "@/services/cars";
 
-export function CarForm() {
+interface CarFormProps {
+    initialData?: Car;
+}
+
+export function CarForm({ initialData }: CarFormProps) {
     const [loading, setLoading] = useState(false);
     const [aiLoading, setAiLoading] = useState(false);
     const router = useRouter();
@@ -25,6 +30,7 @@ export function CarForm() {
         description: "",
         category: "Supercar",
         vehicleType: "car" as 'car' | 'moto' | 'truck' | 'boat' | 'jetski' | 'utv' | 'suv' | 'pickup' | 'supercar',
+        status: "active" as 'active' | 'sold' | 'inactive',
         fuelType: undefined as any,
         cylinderCapacity: undefined as any,
         horsePower: undefined as any,
@@ -35,12 +41,37 @@ export function CarForm() {
     const [videoPublicId, setVideoPublicId] = useState<string>("");
     const [coverImageId, setCoverImageId] = useState<string>("");
 
-    // Memoize callbacks to prevent re-renders during upload
+    // Initialize form with data if provided
+    useEffect(() => {
+        if (initialData) {
+            setFormData({
+                brand: initialData.brand,
+                model: initialData.model,
+                price: initialData.price,
+                year: initialData.year,
+                km: initialData.km,
+                power: initialData.power,
+                description: initialData.description,
+                category: initialData.category,
+                vehicleType: initialData.vehicleType || "car",
+                status: (initialData as any).status || "active",
+                fuelType: initialData.fuelType,
+                cylinderCapacity: (initialData as any).cylinderCapacity,
+                horsePower: (initialData as any).horsePower,
+                transmissionType: (initialData as any).transmissionType,
+            });
+            setImagePublicIds(initialData.images || []);
+            setVideoPublicId(initialData.video || "");
+            setCoverImageId(initialData.thumbnail || (initialData.images && initialData.images[0]) || "");
+        }
+    }, [initialData]);
+
     const handleImageUpload = useCallback((publicIds: string[]) => {
         setImagePublicIds(publicIds);
-        // If no cover is selected and we have images, set the first one as cover
-        setCoverImageId(prev => prev || publicIds[0] || "");
-    }, []);
+        if (!coverImageId && publicIds.length > 0) {
+            setCoverImageId(publicIds[0]);
+        }
+    }, [coverImageId]);
 
     const handleVideoUpload = useCallback((publicIds: string[]) => {
         setVideoPublicId(publicIds[0] || "");
@@ -67,13 +98,9 @@ export function CarForm() {
                 }),
             });
 
-            if (!response.ok) {
-                throw new Error("Erro na API");
-            }
-
+            if (!response.ok) throw new Error("Erro na API");
             const data = await response.json();
 
-            // Fill form with AI data
             setFormData(prev => ({
                 ...prev,
                 brand: data.marca || "",
@@ -83,8 +110,7 @@ export function CarForm() {
                 power: data.potencia || "",
                 description: data.descricao || "",
                 category: data.categoria || "Supercar",
-                // Attempt to map fuel type if possible, or leave as is
-                fuelType: ["Gasolina", "Etanol", "Flex", "Diesel", "Elétrico", "Híbrido"].includes(data.combustivel) ? data.combustivel : prev.fuelType,
+                // Keep status as is
             }));
 
             alert("✨ Dados preenchidos automaticamente pela IA!");
@@ -110,43 +136,45 @@ export function CarForm() {
         }
 
         if (!db) {
-            alert("Firebase não configurado. Configure o Firebase primeiro.");
+            alert("Firebase não configurado.");
             return;
         }
 
         setLoading(true);
 
         try {
-            // Remove undefined values (Firestore doesn't support them)
             const dataToSave: any = {
-                brand: formData.brand,
-                model: formData.model,
-                price: formData.price,
+                ...formData,
                 year: Number(formData.year),
                 km: Number(formData.km),
-                power: formData.power,
-                description: formData.description,
-                category: formData.category,
-                vehicleType: formData.vehicleType,
                 images: imagePublicIds,
                 thumbnail: coverImageId || imagePublicIds[0],
-                createdAt: new Date(),
+                video: videoPublicId || null,
+                updatedAt: new Date(),
             };
 
-            // Add optional fields only if they have values
+            // Remove undefined optional fields
             if (formData.fuelType) dataToSave.fuelType = formData.fuelType;
             if (formData.cylinderCapacity) dataToSave.cylinderCapacity = formData.cylinderCapacity;
             if (formData.horsePower) dataToSave.horsePower = Number(formData.horsePower);
             if (formData.transmissionType) dataToSave.transmissionType = formData.transmissionType;
-            if (videoPublicId) dataToSave.video = videoPublicId;
 
-            await addDoc(collection(db!, "cars"), dataToSave);
+
+            if (initialData?.id) {
+                // UPDATE
+                await updateDoc(doc(db, "cars", initialData.id), dataToSave);
+                alert("Veículo atualizado com sucesso!");
+            } else {
+                // CREATE
+                dataToSave.createdAt = new Date();
+                await addDoc(collection(db, "cars"), dataToSave);
+                // alert("Veículo criado com sucesso!"); // Optional, maybe just redirect
+            }
 
             router.push("/admin/vehicles");
         } catch (error: any) {
             console.error("Error saving car:", error);
-            const errorMessage = error.message || error.toString();
-            alert(`Erro ao salvar veículo: ${errorMessage}\n\nVerifique as regras do Firestore no Firebase Console.`);
+            alert(`Erro ao salvar: ${error.message}`);
         } finally {
             setLoading(false);
         }
@@ -155,188 +183,249 @@ export function CarForm() {
     const inputStyles = "w-full bg-premium-carbon border border-white/10 rounded-lg h-12 px-4 text-white focus:outline-none focus:border-gold transition-colors";
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-8 max-w-4xl">
-            {/* AI Auto-Fill Section */}
-            <div className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-2 border-purple-500/30 rounded-xl p-6">
-                <div className="flex items-center gap-3 mb-4">
-                    <Sparkle size={24} className="text-purple-400" weight="fill" />
-                    <h3 className="text-xl font-bold text-white">Preencher com IA</h3>
+        <form onSubmit={handleSubmit} className="space-y-8 max-w-5xl mx-auto">
+            {/* Status Bar (Only for Edit or explicitly added) */}
+            <div className="bg-premium-carbon border border-white/5 rounded-xl p-6 flex items-center justify-between">
+                <div>
+                    <h3 className="text-white font-bold text-lg">Status do Veículo</h3>
+                    <p className="text-silver/40 text-sm">Defina a visibilidade no site.</p>
                 </div>
-                <p className="text-silver/60 text-sm mb-4">
-                    Digite o nome do veículo (ex: "BMW M4 2022" ou "Ducati Panigale V4") e a IA preencherá todos os dados automaticamente!
-                </p>
-                <div className="flex gap-3">
-                    <input
-                        type="text"
-                        value={vehicleNameForAI}
-                        onChange={(e) => setVehicleNameForAI(e.target.value)}
-                        placeholder="Ex: Ferrari SF90 Stradale 2024"
-                        className={`${inputStyles} flex-1`}
-                        disabled={aiLoading}
-                    />
-                    <button
-                        type="button"
-                        onClick={handleAIFill}
-                        disabled={aiLoading || !vehicleNameForAI.trim()}
-                        className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 
-                                 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg text-white font-bold
-                                 flex items-center gap-2 transition-all hover:scale-105"
-                    >
-                        {aiLoading ? (
-                            <>
-                                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                Gerando...
-                            </>
-                        ) : (
-                            <>
-                                <Sparkle size={20} weight="fill" />
-                                Gerar com IA
-                            </>
-                        )}
-                    </button>
+                <div className="flex gap-4">
+                    {['active', 'sold', 'inactive'].map((status) => (
+                        <button
+                            key={status}
+                            type="button"
+                            onClick={() => setFormData({ ...formData, status: status as any })}
+                            className={`px-4 py-2 rounded-lg text-sm font-bold uppercase transition-all ${formData.status === status
+                                    ? status === 'active' ? 'bg-green-500 text-white' : status === 'sold' ? 'bg-red-500 text-white' : 'bg-silver text-petrol'
+                                    : 'bg-white/5 text-silver hover:bg-white/10'
+                                }`}
+                        >
+                            {status === 'active' ? 'Ativo' : status === 'sold' ? 'Vendido' : 'Inativo'}
+                        </button>
+                    ))}
                 </div>
             </div>
 
-            {/* Existing Form Fields */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                    <label className="block text-xs uppercase tracking-widest text-silver/60 mb-2">Marca</label>
-                    <input name="brand" value={formData.brand} onChange={handleInputChange} className={inputStyles} placeholder="Ex: Ferrari" required />
+            {/* AI Auto-Fill Section (Only show if new or explicitly requested?) - Keeping it always for convenience */}
+            {!initialData && (
+                <div className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-2 border-purple-500/30 rounded-xl p-6 relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-32 bg-purple-500/20 blur-[100px] pointer-events-none group-hover:bg-purple-500/30 transition-colors" />
+                    <div className="relative z-10">
+                        <div className="flex items-center gap-3 mb-4">
+                            <Sparkle size={24} className="text-purple-400" weight="fill" />
+                            <h3 className="text-xl font-bold text-white">Preencher com IA</h3>
+                        </div>
+                        <p className="text-silver/60 text-sm mb-4">
+                            Digite o modelo e a IA buscará dados técnicos automaticamente.
+                        </p>
+                        <div className="flex gap-3">
+                            <input
+                                type="text"
+                                value={vehicleNameForAI}
+                                onChange={(e) => setVehicleNameForAI(e.target.value)}
+                                placeholder="Ex: Porsche 911 GT3 RS 2024"
+                                className={`${inputStyles} flex-1`}
+                                disabled={aiLoading}
+                            />
+                            <button
+                                type="button"
+                                onClick={handleAIFill}
+                                disabled={aiLoading || !vehicleNameForAI.trim()}
+                                className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 
+                                         disabled:opacity-50 disabled:cursor-not-allowed rounded-lg text-white font-bold
+                                         flex items-center gap-2 transition-all hover:scale-105 shadow-lg shadow-purple-500/20"
+                            >
+                                {aiLoading ? (
+                                    <>
+                                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                        Gerando...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Sparkle size={20} weight="fill" />
+                                        Mágica IA
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    </div>
                 </div>
-                <div>
-                    <label className="block text-xs uppercase tracking-widest text-silver/60 mb-2">Modelo</label>
-                    <input name="model" value={formData.model} onChange={handleInputChange} className={inputStyles} placeholder="Ex: SF90 Stradale" required />
-                </div>
-                <div>
-                    <label className="block text-xs uppercase tracking-widest text-silver/60 mb-2">Preço</label>
-                    <input name="price" value={formData.price} onChange={handleInputChange} className={inputStyles} placeholder="R$ 6.500.000" required />
-                </div>
-                <div>
-                    <label className="block text-xs uppercase tracking-widest text-silver/60 mb-2">Ano</label>
-                    <input name="year" type="number" value={formData.year} onChange={handleInputChange} className={inputStyles} required />
-                </div>
-                <div>
-                    <label className="block text-xs uppercase tracking-widest text-silver/60 mb-2">Quilometragem</label>
-                    <input name="km" type="number" value={formData.km} onChange={handleInputChange} className={inputStyles} required />
-                </div>
-                <div>
-                    <label className="block text-xs uppercase tracking-widest text-silver/60 mb-2">Potência</label>
-                    <input name="power" value={formData.power} onChange={handleInputChange} className={inputStyles} placeholder="1000 cv" required />
-                </div>
-                <div>
-                    <label className="block text-xs uppercase tracking-widest text-silver/60 mb-2">Categoria</label>
-                    <select name="category" value={formData.category} onChange={handleInputChange} className={inputStyles}>
-                        <option value="Supercar">Supercar</option>
-                        <option value="SUV">SUV de Luxo</option>
-                        <option value="Sedan">Sedan Executivo</option>
-                        <option value="Classic">Clássico</option>
-                        <option value="Esportiva">Esportiva</option>
-                        <option value="Touring">Touring</option>
-                        <option value="Cruiser">Cruiser</option>
-                        <option value="Iate">Iate</option>
-                        <option value="Lancha">Lancha</option>
-                        <option value="Jet Ski">Jet Ski</option>
-                        <option value="Cavalo Mecânico">Cavalo Mecânico</option>
-                        <option value="Picape">Picape</option>
-                    </select>
-                </div>
-                <div>
-                    <label className="block text-xs uppercase tracking-widest text-silver/60 mb-2">Tipo de Veículo</label>
-                    <select name="vehicleType" value={formData.vehicleType} onChange={handleInputChange} className={inputStyles}>
-                        <option value="car">Carro</option>
-                        <option value="moto">Moto</option>
-                        <option value="truck">Caminhão</option>
-                        <option value="boat">Lancha</option>
-                        <option value="jetski">Jet Ski</option>
-                        <option value="utv">UTV/ATV</option>
-                        <option value="suv">SUV</option>
-                        <option value="pickup">Picape</option>
-                        <option value="supercar">Supercarro</option>
-                    </select>
+            )}
+
+            {/* Main Fields */}
+            <div className="bg-premium-carbon border border-white/5 rounded-xl p-6">
+                <h3 className="text-white font-bold text-lg mb-6 flex items-center gap-2">
+                    <CarIcon size={20} className="text-gold" />
+                    Informações Principais
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label className="block text-xs uppercase tracking-widest text-silver/60 mb-2">Marca</label>
+                        <input name="brand" value={formData.brand} onChange={handleInputChange} className={inputStyles} placeholder="Ex: Ferrari" required />
+                    </div>
+                    <div>
+                        <label className="block text-xs uppercase tracking-widest text-silver/60 mb-2">Modelo</label>
+                        <input name="model" value={formData.model} onChange={handleInputChange} className={inputStyles} placeholder="Ex: SF90 Stradale" required />
+                    </div>
+                    <div>
+                        <label className="block text-xs uppercase tracking-widest text-silver/60 mb-2">Preço (R$)</label>
+                        <input name="price" value={formData.price} onChange={handleInputChange} className={inputStyles} placeholder="R$ 6.500.000" required />
+                    </div>
+                    <div>
+                        <label className="block text-xs uppercase tracking-widest text-silver/60 mb-2">Ano</label>
+                        <input name="year" type="number" value={formData.year} onChange={handleInputChange} className={inputStyles} required />
+                    </div>
+                    <div>
+                        <label className="block text-xs uppercase tracking-widest text-silver/60 mb-2">Quilometragem</label>
+                        <input name="km" type="number" value={formData.km} onChange={handleInputChange} className={inputStyles} required />
+                    </div>
+                    <div>
+                        <label className="block text-xs uppercase tracking-widest text-silver/60 mb-2">Potência (Ex: 1000cv)</label>
+                        <input name="power" value={formData.power} onChange={handleInputChange} className={inputStyles} required />
+                    </div>
+                    <div>
+                        <label className="block text-xs uppercase tracking-widest text-silver/60 mb-2">Categoria</label>
+                        <select name="category" value={formData.category} onChange={handleInputChange} className={inputStyles}>
+                            <option value="Supercar">Supercar</option>
+                            <option value="SUV">SUV de Luxo</option>
+                            <option value="Sedan">Sedan Executivo</option>
+                            <option value="Classic">Clássico</option>
+                            <option value="Esportiva">Esportiva</option>
+                            <option value="Touring">Touring</option>
+                            <option value="Cruiser">Cruiser</option>
+                            <option value="Iate">Iate</option>
+                            <option value="Lancha">Lancha</option>
+                            <option value="Jet Ski">Jet Ski</option>
+                            <option value="Cavalo Mecânico">Cavalo Mecânico</option>
+                            <option value="Picape">Picape</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-xs uppercase tracking-widest text-silver/60 mb-2">Tipo</label>
+                        <select name="vehicleType" value={formData.vehicleType} onChange={handleInputChange} className={inputStyles}>
+                            <option value="car">Carro</option>
+                            <option value="moto">Moto</option>
+                            <option value="truck">Caminhão</option>
+                            <option value="boat">Lancha</option>
+                            <option value="jetski">Jet Ski</option>
+                            <option value="utv">UTV/ATV</option>
+                            <option value="suv">SUV</option>
+                            <option value="pickup">Picape</option>
+                            <option value="supercar">Supercarro</option>
+                        </select>
+                    </div>
                 </div>
             </div>
 
-            {/* Optional Fields */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                    <label className="block text-xs uppercase tracking-widest text-silver/60 mb-2">Combustível (Opcional)</label>
-                    <select name="fuelType" value={formData.fuelType || ""} onChange={handleInputChange} className={inputStyles}>
-                        <option value="">Não especificado</option>
-                        <option value="Gasolina">Gasolina</option>
-                        <option value="Etanol">Etanol</option>
-                        <option value="Flex">Flex</option>
-                        <option value="Diesel">Diesel</option>
-                        <option value="Elétrico">Elétrico</option>
-                        <option value="Híbrido">Híbrido</option>
-                    </select>
-                </div>
-                <div>
-                    <label className="block text-xs uppercase tracking-widest text-silver/60 mb-2">Transmissão (Opcional)</label>
-                    <select name="transmissionType" value={formData.transmissionType || ""} onChange={handleInputChange} className={inputStyles}>
-                        <option value="">Não especificado</option>
-                        <option value="Manual">Manual</option>
-                        <option value="Automática">Automática</option>
-                        <option value="CVT">CVT</option>
-                    </select>
-                </div>
-                <div>
-                    <label className="block text-xs uppercase tracking-widest text-silver/60 mb-2">Cilindrada - Motos (Opcional)</label>
-                    <input name="cylinderCapacity" value={formData.cylinderCapacity || ""} onChange={handleInputChange} className={inputStyles} placeholder="Ex: 1000cc" />
-                </div>
-                <div>
-                    <label className="block text-xs uppercase tracking-widest text-silver/60 mb-2">HP - Lanchas/Jetski (Opcional)</label>
-                    <input name="horsePower" type="number" value={formData.horsePower || ""} onChange={handleInputChange} className={inputStyles} placeholder="Ex: 325" />
+            {/* Tech Specs */}
+            <div className="bg-premium-carbon border border-white/5 rounded-xl p-6">
+                <h3 className="text-white font-bold text-lg mb-6 flex items-center gap-2">
+                    <Sparkle size={20} className="text-gold" />
+                    Especificações Técnicas
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label className="block text-xs uppercase tracking-widest text-silver/60 mb-2">Combustível</label>
+                        <select name="fuelType" value={formData.fuelType || ""} onChange={handleInputChange} className={inputStyles}>
+                            <option value="">Não especificado</option>
+                            <option value="Gasolina">Gasolina</option>
+                            <option value="Etanol">Etanol</option>
+                            <option value="Flex">Flex</option>
+                            <option value="Diesel">Diesel</option>
+                            <option value="Elétrico">Elétrico</option>
+                            <option value="Híbrido">Híbrido</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-xs uppercase tracking-widest text-silver/60 mb-2">Transmissão</label>
+                        <select name="transmissionType" value={formData.transmissionType || ""} onChange={handleInputChange} className={inputStyles}>
+                            <option value="">Não especificado</option>
+                            <option value="Manual">Manual</option>
+                            <option value="Automática">Automática</option>
+                            <option value="CVT">CVT</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-xs uppercase tracking-widest text-silver/60 mb-2">Cilindrada (Motos)</label>
+                        <input name="cylinderCapacity" value={formData.cylinderCapacity || ""} onChange={handleInputChange} className={inputStyles} placeholder="Ex: 1000cc" />
+                    </div>
+                    <div>
+                        <label className="block text-xs uppercase tracking-widest text-silver/60 mb-2">HP (Náutico)</label>
+                        <input name="horsePower" type="number" value={formData.horsePower || ""} onChange={handleInputChange} className={inputStyles} placeholder="Ex: 300" />
+                    </div>
                 </div>
             </div>
 
-            <div>
-                <label className="block text-xs uppercase tracking-widest text-silver/60 mb-2">Descrição</label>
+            {/* Description */}
+            <div className="bg-premium-carbon border border-white/5 rounded-xl p-6">
+                <label className="block text-xs uppercase tracking-widest text-silver/60 mb-2">Descrição Detalhada</label>
                 <textarea
                     name="description"
                     value={formData.description}
                     onChange={handleInputChange}
-                    className={`${inputStyles} h-32 py-4`}
-                    placeholder="Descrição premium do veículo..."
+                    className={`${inputStyles} h-40 py-4`}
+                    placeholder="Descreva os detalhes exclusivos deste veículo..."
                     required
                 />
             </div>
 
-            {/* Images */}
-            <div>
-                <label className="block text-xs uppercase tracking-widest text-silver/60 mb-4">
-                    Fotos do Veículo <span className="text-red-400">*</span>
-                    <span className="ml-2 text-gold text-[10px] normal-case bg-gold/10 px-2 py-0.5 rounded-full border border-gold/20">
-                        {coverImageId ? "Foto de capa selecionada" : "A primeira foto será a capa"}
-                    </span>
-                </label>
-                <CloudinaryUploader
-                    onUploadComplete={handleImageUpload}
-                    maxFiles={999}
-                    folder={`cars/${formData.vehicleType}`}
-                    resourceType="image"
-                    acceptedFormats={['jpg', 'png', 'webp', 'heic']}
-                    onSelectCover={handleSetCover}
-                    selectedCoverId={coverImageId}
-                />
+            {/* Media */}
+            <div className="bg-premium-carbon border border-white/5 rounded-xl p-6">
+                <h3 className="text-white font-bold text-lg mb-6 flex items-center gap-2">
+                    <ImageIcon size={20} className="text-gold" />
+                    Galeria de Mídia
+                </h3>
+                <div className="space-y-6">
+                    <div>
+                        <label className="block text-xs uppercase tracking-widest text-silver/60 mb-4">
+                            Fotos <span className="text-gold">({imagePublicIds.length} enviadas)</span>
+                            <span className="ml-2 text-gold text-[10px] normal-case bg-gold/10 px-2 py-0.5 rounded-full border border-gold/20">
+                                {coverImageId ? "Capa definida" : "A primeira será a capa"}
+                            </span>
+                        </label>
+                        <CloudinaryUploader
+                            onUploadComplete={handleImageUpload}
+                            maxFiles={50} // "Multiplas imagens"
+                            folder={`cars/${formData.vehicleType}`}
+                            resourceType="image"
+                            acceptedFormats={['jpg', 'png', 'webp', 'heic']}
+                            onSelectCover={handleSetCover}
+                            selectedCoverId={coverImageId}
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-xs uppercase tracking-widest text-silver/60 mb-4">
+                            Vídeo de Apresentação
+                        </label>
+                        <CloudinaryUploader
+                            onUploadComplete={handleVideoUpload}
+                            maxFiles={1}
+                            folder={`cars/${formData.vehicleType}/videos`}
+                            resourceType="video"
+                            acceptedFormats={['mp4', 'mov', 'avi']}
+                        />
+                        {videoPublicId && (
+                            <p className="text-green-400 text-xs mt-2 flex items-center gap-1">
+                                <Sparkle weight="fill" /> Vídeo anexado com sucesso
+                            </p>
+                        )}
+                    </div>
+                </div>
             </div>
 
-            {/* Video */}
-            <div>
-                <label className="block text-xs uppercase tracking-widest text-silver/60 mb-4">
-                    Vídeo do Veículo <span className="text-silver/40">(Opcional)</span>
-                </label>
-                <CloudinaryUploader
-                    onUploadComplete={handleVideoUpload}
-                    maxFiles={1}
-                    folder={`cars/${formData.vehicleType}/videos`}
-                    resourceType="video"
-                    acceptedFormats={['mp4', 'mov', 'avi']}
-                />
+            <div className="flex justify-end gap-4 pt-4">
+                <Button type="button" variant="ghost" onClick={() => router.back()}>
+                    Cancelar
+                </Button>
+                <Button type="submit" size="lg" isLoading={loading} leftIcon={<FloppyDisk size={20} />}>
+                    {initialData ? 'Salvar Alterações' : 'Cadastrar Veículo'}
+                </Button>
             </div>
-
-            <Button type="submit" size="lg" isLoading={loading} leftIcon={<CarIcon size={20} />}>
-                Salvar Veículo
-            </Button>
         </form>
     );
 }
+
+// Helper icon component
+import { Image as ImageIcon } from "@phosphor-icons/react";

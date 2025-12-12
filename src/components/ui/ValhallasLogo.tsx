@@ -24,7 +24,7 @@ export function ValhallasLogo({ className, showText = true, variant = "light" }:
                 className={cn("w-10 h-10", fillColor)}
             >
                 <path d="M50 85L15 25H30L50 65L70 25H85L50 85Z" fill="currentColor" />
-                <path d="M50 15L60 35H40L50 15Z" fill="#D4AF37" /> {/* Gold Accent */}
+                <path d="M50 15L60 35H40L50 15Z" fill="var(--color-premium-gold)" /> {/* Gold Accent */}
             </svg>
 
             {/* Text */}
