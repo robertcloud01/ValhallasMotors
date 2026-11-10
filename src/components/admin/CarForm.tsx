@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/Button";
 import { CloudinaryUploader } from "@/components/admin/CloudinaryUploader";
-import { db } from "@/lib/firebase";
+import { auth, db } from "@/lib/firebase";
 import { collection, addDoc, doc, updateDoc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { Sparkle, Car as CarIcon, FloppyDisk } from "@phosphor-icons/react";
@@ -90,9 +90,12 @@ export function CarForm({ initialData }: CarFormProps) {
         setAiLoading(true);
 
         try {
+            const token = await auth?.currentUser?.getIdToken();
+            if (!token) throw new Error("Sessão não disponível.");
+
             const response = await fetch("/api/generate-vehicle", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
                 body: JSON.stringify({
                     query: vehicleNameForAI
                 }),
@@ -113,7 +116,7 @@ export function CarForm({ initialData }: CarFormProps) {
                 // Keep status as is
             }));
 
-            alert("✨ Dados preenchidos automaticamente pela IA!");
+            alert("Rascunho preenchido. Revise os dados e confirme as fontes antes de salvar.");
         } catch (error) {
             console.error("Erro ao gerar com IA:", error);
             alert("Erro ao gerar dados com IA.");

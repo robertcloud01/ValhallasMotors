@@ -96,10 +96,6 @@
     /* Tighter tracking for premium feel */
   }
 
-  /* Smooth Scrolling */
-  html {
-    scroll-behavior: smooth;
-  }
 }
 
 @layer utilities {

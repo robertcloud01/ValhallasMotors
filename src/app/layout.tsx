@@ -1,43 +1,31 @@
 import type { Metadata } from "next";
-import { Inter, Plus_Jakarta_Sans } from "next/font/google"; // Using Plus Jakarta as a proxy for premium display font
+import localFont from "next/font/local";
+import { pageMetadata, publicOrigin } from "@/lib/editorial-seo";
 import "./globals.css";
-import { registerGSAP } from "@/lib/gsap";
+import "./editorial.css";
 
-const inter = Inter({
+const inter = localFont({
+  src: "../../node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2",
   variable: "--font-inter",
-  subsets: ["latin"],
+  weight: "100 900",
   display: "swap",
 });
-
-const plusJakarta = Plus_Jakarta_Sans({
-  variable: "--font-neue-haas", // Mapping to our internal name for consistency
-  subsets: ["latin"],
+const plusJakarta = localFont({
+  src: "../../node_modules/@fontsource-variable/plus-jakarta-sans/files/plus-jakarta-sans-latin-wght-normal.woff2",
+  variable: "--font-neue-haas",
+  weight: "200 800",
   display: "swap",
-  weight: ["400", "500", "600", "700", "800"],
+  preload: false,
 });
-
-import { Preloader } from "@/components/ui/Preloader";
-
-registerGSAP();
+const origin = publicOrigin();
 
 export const metadata: Metadata = {
-  title: "Valhallas Motors | Exotic Cars",
-  description: "Onde performance encontra o luxo absoluto. A sua concessionária de veículos exóticos.",
+  ...pageMetadata("Forma em movimento", "Uma coleção editorial sobre a forma, a engenharia e o propósito de cada carro.", "/"),
+  ...(origin ? { metadataBase: origin } : {}),
+  title: { default: "Valhallas Motors | Forma em movimento", template: "%s | Valhallas Motors" },
+  robots: { index: Boolean(origin), follow: Boolean(origin) },
 };
 
-// ...
-
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
-  return (
-    <html lang="pt-BR" className={`${inter.variable} ${plusJakarta.variable}`}>
-      <body className="antialiased min-h-screen selection:bg-gold selection:text-black">
-        <Preloader />
-        {children}
-      </body>
-    </html>
-  );
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  return <html lang="pt-BR" className={`${inter.variable} ${plusJakarta.variable}`}><body className="antialiased min-h-screen">{children}</body></html>;
 }

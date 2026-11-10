@@ -1,36 +1,34 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Valhallas Motors
 
-## Getting Started
+Coleção automotiva editorial da Valhallas Studio. **Forma em movimento** é um conceito autoral de portfólio.
 
-First, run the development server:
+## Rodar localmente
 
-```bash
+Requer Node.js 20.9 ou superior e npm.
+
+```sh
+npm ci
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Abra [localhost:3000](http://localhost:3000). As páginas públicas funcionam em modo demonstrativo sem credenciais. O catálogo usa três modelos com fotografias creditadas, busca e filtros na URL. A consulta de teste valida os campos no navegador. Use `npm run build` para verificar a compilação e `npm run lint` para verificar a base toda.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Configuração
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Variável | Comportamento |
+| --- | --- |
+| `VALHALLAS_SITE_URL` | Origem pública HTTPS. Habilita indexação, URLs canônicas, compartilhamento e sitemap. Deixe ausente em prévias. |
+| `VALHALLAS_INVENTORY_MODE` | `live` usa o inventário Firestore no site público. Sem a opção, usa o catálogo editorial de demonstração. Erros do Firestore em modo live não viram dados simulados. |
+| `VALHALLAS_WHATSAPP` | Número internacional verificado, apenas dígitos. Exibe o canal opcional e inclui o modelo na mensagem sugerida. |
+| `VALHALLAS_CONTACT_EMAIL` | E-mail verificado para abrir o aplicativo local de e-mail. O formulário de teste continua local. |
+| `NEXT_PUBLIC_FIREBASE_*` | Configuração do projeto Firebase usada pelo painel. Os nomes estão em `src/lib/firebase.ts`. |
+| `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME`, `NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET` | Integração de mídia legada do painel. |
+| `DEEPSEEK_API_KEY`, `VALHALLAS_ADMIN_UIDS` | Geração administrativa opcional. A rota valida a sessão Firebase e permite somente UIDs da lista separada por vírgulas. A chave do provedor fica no servidor. |
 
-## Learn More
+Antes de disponibilizar o modo comercial, valide regras de escrita no Firestore e Storage, mídia licenciada, contatos e configuração de entrega de mensagens. A geração de fichas retorna rascunhos para revisão humana. O painel e as integrações exigem testes com credenciais de um ambiente próprio.
 
-To learn more about Next.js, take a look at the following resources:
+## Projeto
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- [Estratégia, direção de arte e sistema de design](docs/valhallas-editorial.md)
+- [Manifesto de mídia e licenças](docs/valhallas-ativos.md)
+- [Estrutura do case e materiais iniciais para Fiverr](docs/valhallas-portfolio.md)

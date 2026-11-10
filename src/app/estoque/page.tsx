@@ -1,136 +1,50 @@
-"use client";
+import { Icon } from "@/components/editorial/Icon";
+import Link from "next/link";
+import { EditorialShell } from "@/components/editorial/Shell";
+import { VehicleCard } from "@/components/editorial/VehicleCard";
+import { selectVehicles, stockFilters, stockQuery, type SearchValues } from "@/lib/editorial";
+import { pageMetadata } from "@/lib/editorial-seo";
+import { inventory, liveInventory } from "@/services/editorial-inventory";
 
-import { useState, useEffect } from "react";
-import { Navbar } from "@/components/layout/Navbar";
-import { Footer } from "@/components/layout/Footer";
-import { getCars, Car } from "@/services/cars";
-import { useCatalogFilters } from "@/hooks/useCatalogFilters";
-import { SearchBar } from "@/components/catalog/SearchBar";
-import { FilterSidebar } from "@/components/catalog/FilterSidebar";
-import { FilterTags } from "@/components/catalog/FilterTags";
-import { SortOptions } from "@/components/catalog/SortOptions";
-import { VehicleCard, VehicleCardSkeleton } from "@/components/catalog/VehicleCard";
+export const metadata = pageMetadata("Coleção", "Explore a coleção editorial de automóveis da Valhallas Motors.", "/estoque");
 
-export const dynamic = "force-dynamic";
+export default async function CollectionPage({ searchParams }: { searchParams: Promise<SearchValues> }) {
+  const [cars, params] = await Promise.all([inventory(), searchParams]);
+  const filters = stockFilters(params);
+  const query = stockQuery(filters);
+  const selected = selectVehicles(cars, filters);
+  const brands = [...new Set(cars.map((car) => car.brand))].sort();
+  const categories = [...new Set(cars.map((car) => car.category))].sort();
 
-export default function CatalogPage() {
-    const [allCars, setAllCars] = useState<Car[]>([]);
-    const [loading, setLoading] = useState(true);
-
-    // Fetch all cars
-    useEffect(() => {
-        async function fetchCars() {
-            const data = await getCars();
-            setAllCars(data);
-            setLoading(false);
-        }
-        fetchCars();
-    }, []);
-
-    // Use catalog filters hook
-    const {
-        filters,
-        setFilter,
-        clearFilter,
-        clearFilters,
-        sortBy,
-        setSortBy,
-        filteredCars,
-        totalResults,
-        activeFiltersCount,
-    } = useCatalogFilters(allCars);
-
-    return (
-        <main className="min-h-screen bg-black text-white">
-            <Navbar />
-
-            {/* Header with Search */}
-            <div className="pt-32 pb-8 bg-premium-carbon border-b border-white/5">
-                <div className="container mx-auto px-6 space-y-6">
-                    <div>
-                        <h1 className="text-4xl md:text-5xl font-display font-bold mb-2">
-                            Nosso Catálogo
-                        </h1>
-                        <p className="text-silver/60">
-                            Explore a coleção mais exclusiva do país
-                        </p>
-                    </div>
-
-                    {/* Search Bar */}
-                    <div className="flex justify-center md:justify-start">
-                        <SearchBar
-                            allCars={allCars}
-                            searchTerm={filters.search}
-                            onSearchChange={(term) => setFilter('search', term)}
-                        />
-                    </div>
-                </div>
-            </div>
-
-            {/* Main Content */}
-            <div className="container mx-auto px-6 py-12">
-                <div className="flex flex-col lg:flex-row gap-8">
-                    {/* Sidebar */}
-                    <FilterSidebar
-                        filters={filters}
-                        onFilterChange={setFilter}
-                        allCars={allCars}
-                    />
-
-                    {/* Results */}
-                    <div className="flex-1 space-y-6">
-                        {/* Filter Tags + Sort */}
-                        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                            <FilterTags
-                                filters={filters}
-                                onClearFilter={clearFilter}
-                                onClearAll={clearFilters}
-                                activeCount={activeFiltersCount}
-                            />
-
-                            <div className="flex items-center gap-4 ml-auto">
-                                <div className="text-sm text-silver/60">
-                                    {totalResults} {totalResults === 1 ? 'veículo' : 'veículos'}
-                                </div>
-                                <SortOptions sortBy={sortBy} onChange={setSortBy} />
-                            </div>
-                        </div>
-
-                        {/* Grid */}
-                        {loading ? (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                {[...Array(6)].map((_, i) => (
-                                    <VehicleCardSkeleton key={i} />
-                                ))}
-                            </div>
-                        ) : filteredCars.length > 0 ? (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                {filteredCars.map((car, index) => (
-                                    <VehicleCard key={car.id} car={car} index={index} />
-                                ))}
-                            </div>
-                        ) : (
-                            <div className="flex flex-col items-center justify-center py-20 text-center">
-                                <div className="text-6xl mb-4">🔍</div>
-                                <h3 className="text-2xl font-bold text-white mb-2">
-                                    Nenhum veículo encontrado
-                                </h3>
-                                <p className="text-silver/60 mb-6">
-                                    Tente ajustar os filtros ou fazer uma nova busca
-                                </p>
-                                <button
-                                    onClick={clearFilters}
-                                    className="px-6 py-3 bg-gold hover:bg-gold/80 text-black font-bold rounded-lg transition-colors"
-                                >
-                                    Limpar Filtros
-                                </button>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            </div>
-
-            <Footer />
-        </main>
-    );
+  return (
+    <EditorialShell>
+      <section className="vm-page-intro">
+        <div className="vm-wrap">
+          <p className="vm-kicker">01 / Acervo editorial</p>
+          <h1>A <em>coleção.</em></h1>
+          <p>{liveInventory ? "Explore os automóveis da coleção e abra a ficha de cada modelo." : "Três leituras de performance. A seleção faz parte de uma demonstração de portfólio."}</p>
+        </div>
+      </section>
+      <section className="vm-light vm-stock">
+        <div className="vm-wrap">
+          <form className="vm-stock-form" method="get" action="/estoque">
+            <label>Buscar modelo <input type="search" name="q" defaultValue={filters.q} maxLength={100} placeholder="Ex. Porsche 911" /></label>
+            <label>Marca <select name="marca" defaultValue={filters.marca}><option value="">Todas</option>{brands.map((brand) => <option key={brand}>{brand}</option>)}</select></label>
+            <label>Categoria <select name="categoria" defaultValue={filters.categoria}><option value="">Todas</option>{categories.map((category) => <option key={category}>{category}</option>)}</select></label>
+            <label>Ordenar por <select name="ordem" defaultValue={filters.ordem}><option value="">Curadoria</option><option value="ano">Ano mais recente</option><option value="nome">Marca e modelo</option></select></label>
+            <button type="submit" className="vm-button vm-button-dark">Aplicar <span aria-hidden="true"><Icon /></span></button>
+          </form>
+          <div className="vm-stock-summary">
+            <h2 className="vm-kicker">{selected.length} {selected.length === 1 ? "modelo" : "modelos"}</h2>
+            {query && <Link className="vm-text-link" href="/estoque">Limpar filtros</Link>}
+          </div>
+          {selected.length > 0 ? (
+            <div className="vm-stock-grid">{selected.map((car) => <VehicleCard car={car} key={car.id} returnQuery={query} />)}</div>
+          ) : (
+            <div className="vm-empty"><h3>Nenhum modelo encontrado.</h3><p>Experimente outro termo ou remova um dos filtros.</p><Link className="vm-text-link" href="/estoque">Ver todos os modelos</Link></div>
+          )}
+        </div>
+      </section>
+    </EditorialShell>
+  );
 }

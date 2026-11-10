@@ -1,0 +1,16 @@
+# Manifesto de mídia · Valhallas Motors
+
+Registro de 10 de novembro de 2026. Os créditos também aparecem nas fichas e na página Termos e créditos.
+
+| Arquivo | Origem | Direitos indicados na fonte | Uso e otimização |
+| --- | --- | --- | --- |
+| `forma-em-movimento.webp` | Imagem gerada para a direção de arte da Valhallas. Veículo conceitual sem marca. | Arte conceitual de portfólio. A versão comercial pede fotografia própria ou licenciada do veículo real. | Abertura e compartilhamento. WebP de 1536 × 1024. Ajuste do enquadramento no CSS. |
+| `porsche-alt.webp` | [Porsche 992 GT3 with touring package 1X7A6142](https://commons.wikimedia.org/wiki/File:Porsche_992_GT3_with_touring_package_1X7A6142.jpg) · Alexander Migl. | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) · derivados de imagem preservam essa licença. | Destaque e ficha. Redimensionada para até 1440 px e convertida para WebP. |
+| `porsche.webp` | [2022 Porsche 911 GT3 Touring 992](https://commons.wikimedia.org/wiki/File:2022_Porsche_911_GT3_Touring_992.jpg) · Calreyn88. | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) · derivados de imagem preservam essa licença. | Segundo ângulo na ficha. Redimensionada para até 1440 px e convertida para WebP. |
+| `revuelto.webp` | [2023 Lamborghini Revuelto LB744 Orange FOS23](https://commons.wikimedia.org/wiki/File:2023_Lamborghini_Revuelto_LB744_Orange_FOS23.jpg) · MrWalkr. | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) · derivados de imagem preservam essa licença. | Coleção e ficha. Redimensionada para até 1440 px e convertida para WebP. |
+| `bentley.webp` | [Bentley Continental GT Mulliner W12 (2024)](https://commons.wikimedia.org/wiki/File:Bentley_Continental_GT_Mulliner_W12_(2024)_(54560204795).jpg) · Charles (usf1fan2). | [CC BY 2.0](https://creativecommons.org/licenses/by/2.0/). | Coleção e ficha. Redimensionada para até 1440 px e convertida para WebP. |
+| `revuelto-interior.webp` | [Lamborghini Revuelto intérieur 02](https://commons.wikimedia.org/wiki/File:Lamborghini_Revuelto_int%C3%A9rieur_02.jpg) · Y.Leclercq. | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) · derivados de imagem preservam essa licença. | Interior na ficha. Redimensionada para até 1440 px e convertida para WebP. |
+| `bentley-alt.webp` | [2022 Bentley Continental GT Mulliner](https://commons.wikimedia.org/wiki/File:2022_Bentley_Continental_GT_Mulliner.jpg) · Calreyn88. | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) · derivados de imagem preservam essa licença. | Outro exemplar da mesma geração, identificado no texto alternativo. Redimensionada para até 1440 px e convertida para WebP. |
+| `public/hero.mp4` | Material legado sem documentação de origem no repositório auditado. | Direitos pendentes de comprovação. | Arquivo legado. Fora da abertura editorial e sem transferência na home. |
+
+**Prompt da imagem conceitual.** Fotografia editorial automotiva em paisagem, esportivo fictício de titânio sem marca, baixo e voltado para a esquerda, deslocado ao centro-direita de um pavilhão brutalista. Luz natural quente entrando por uma abertura horizontal, reflexos físicos discretos, área escura à esquerda para a manchete, sem pessoas, logos, letras ou bloom.

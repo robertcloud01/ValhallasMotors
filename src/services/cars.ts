@@ -11,6 +11,7 @@ export interface Car {
     power: string;
     description: string;
     images: string[];  // Cloudinary public IDs or full URLs
+    status?: 'active' | 'sold' | 'inactive';
     thumbnail?: string; // Main image
     video?: string;    // Cloudinary public ID for video (optional)
     category: string;
@@ -25,9 +26,10 @@ export interface Car {
     transmissionType?: 'Manual' | 'Automática' | 'CVT';
 }
 
-export const getCars = async (): Promise<Car[]> => {
+export const getCars = async ({ requireLive = false } = {}): Promise<Car[]> => {
     // Return mock data if Firebase not configured
     if (!db) {
+        if (requireLive) throw new Error("Estoque indisponível.");
         console.warn('⚠️ Firebase não configurado, usando dados mock');
         return MOCK_CARS;
     }
@@ -42,15 +44,17 @@ export const getCars = async (): Promise<Car[]> => {
             ...doc.data(),
         })) as Car[];
     } catch (error) {
+        if (requireLive) throw new Error("Estoque indisponível.", { cause: error });
         console.error("Error fetching cars:", error);
         // Return mock data if firebase fails (e.g. no keys)
         return MOCK_CARS;
     }
 };
 
-export const getCarById = async (id: string): Promise<Car | null> => {
+export const getCarById = async (id: string, { requireLive = false } = {}): Promise<Car | null> => {
     // Return mock data if Firebase not configured
     if (!db) {
+        if (requireLive) throw new Error("Estoque indisponível.");
         console.warn('⚠️ Firebase não configurado, usando dados mock');
         return MOCK_CARS.find(c => c.id === id) || null;
     }
@@ -65,6 +69,7 @@ export const getCarById = async (id: string): Promise<Car | null> => {
             return null;
         }
     } catch (error) {
+        if (requireLive) throw new Error("Estoque indisponível.", { cause: error });
         console.error("Error fetching car:", error);
         return MOCK_CARS.find(c => c.id === id) || null;
     }

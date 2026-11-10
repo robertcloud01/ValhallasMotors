@@ -1,86 +1,64 @@
-export async function POST(req: Request) {
-    try {
-        const { query } = await req.json();
-        console.log("🚀 [API] Request received for DeepSeek via OpenRouter:", { query });
+const unavailable = () => Response.json({ error: "Geração indisponível." }, { status: 503 });
 
-        if (!process.env.DEEPSEEK_API_KEY) {
-            console.error("❌ [API] DEEPSEEK_API_KEY is missing in env.");
-            return new Response(JSON.stringify({ error: true, message: "Server API Key configuration error" }), { status: 500 });
-        }
+export async function POST(request: Request) {
+  const token = request.headers.get("Authorization")?.match(/^Bearer ([\w.-]+)$/)?.[1];
+  if (!token) return Response.json({ error: "Autenticação necessária." }, { status: 401 });
 
-        const prompt = `
-      Você é um especialista em vendas de carros de luxo.
-      Gere dados técnicos e comerciais detalhados sobre o veículo: ${query}.
-      
-      Retorne SOMENTE um JSON válido (sem markdown, sem \`\`\`) no formato exato:
-      {
-        "modelo": "Nome exato e versão",
-        "marca": "Marca do veículo",
-        "ano": "Ano aproximado (número)",
-        "categoria": "Categoria (Supercar, SUV, Sedan, etc)",
-        "combustivel": "Gasolina, Híbrido, Diesel, etc",
-        "hibrido": false,
-        "potencia": "Ex: 780 cv",
-        "torque": "Ex: 73 kgfm",
-        "valorEstimado": "Ex: R$ 6.500.000 (preço estimado no Brasil)",
-        "descricao": "Texto persuasivo, luxuoso e técnico para venda (máx 400 caracteres)."
-      }
-    `;
+  const admins = new Set((process.env.VALHALLAS_ADMIN_UIDS ?? "").split(",").map((uid) => uid.trim()).filter(Boolean));
+  const firebaseKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
+  const providerKey = process.env.DEEPSEEK_API_KEY;
+  if (!firebaseKey || !providerKey || admins.size === 0) return unavailable();
 
-        // Using OpenRouter which provides access to DeepSeek models
-        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-            method: "POST",
-            headers: {
-                "Authorization": `Bearer ${process.env.DEEPSEEK_API_KEY}`,
-                "Content-Type": "application/json",
-                "HTTP-Referer": "http://localhost:3000", // Required by OpenRouter for ranking
-                "X-Title": "Concessionaria Premium"
-            },
-            body: JSON.stringify({
-                model: "deepseek/deepseek-chat", // Standard DeepSeek V3/V2.5
-                messages: [
-                    { role: "system", content: "You are a helpful JSON api that outputs vehicle data." },
-                    { role: "user", content: prompt }
-                ],
-                temperature: 0.7
-            })
-        });
-
-        if (!response.ok) {
-            const errText = await response.text();
-            console.error("❌ [API] OpenRouter Error:", errText);
-            throw new Error(`OpenRouter API Error: ${response.status} - ${errText}`);
-        }
-
-        const data = await response.json();
-        const rawContent = data.choices?.[0]?.message?.content || "";
-
-        console.log("📥 [API] Raw response:", rawContent);
-
-        // Clean up code blocks
-        const cleanedResponse = rawContent.replace(/^```json\s*/, '').replace(/^```\s*/, '').replace(/\s*```$/, '').trim();
-
-        // Verification attempt
-        try {
-            JSON.parse(cleanedResponse);
-        } catch (e) {
-            console.error("Failed to parse JSON:", e);
-            // Fallback extract
-            const match = cleanedResponse.match(/\{[\s\S]*\}/);
-            if (match) return new Response(match[0], { status: 200, headers: { "Content-Type": "application/json" } });
-        }
-
-        return new Response(cleanedResponse, {
-            status: 200,
-            headers: { "Content-Type": "application/json" }
-        });
-
-    } catch (error: any) {
-        console.error("🔥 [API] Critical Error:", error);
-        return new Response(JSON.stringify({
-            error: true,
-            message: "Erro interno",
-            details: error.message
-        }), { status: 500 });
+  try {
+    const lookupUrl = new URL("https://identitytoolkit.googleapis.com/v1/accounts:lookup");
+    lookupUrl.searchParams.set("key", firebaseKey);
+    const lookup = await fetch(lookupUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ idToken: token }),
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!lookup.ok) {
+      return lookup.status === 400 || lookup.status === 401
+        ? Response.json({ error: "Sessão inválida." }, { status: 401 })
+        : unavailable();
     }
+
+    const { users } = await lookup.json() as { users?: { localId: string; disabled?: boolean }[] };
+    const account = users?.[0];
+    if (!account || account.disabled || !admins.has(account.localId)) {
+      return Response.json({ error: "Acesso restrito." }, { status: 403 });
+    }
+
+    const body: unknown = await request.json().catch(() => null);
+    const query = body && typeof body === "object" && "query" in body && typeof body.query === "string" ? body.query.trim() : "";
+    if (!query || query.length > 140) return Response.json({ error: "Informe um modelo válido." }, { status: 400 });
+
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${providerKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "deepseek/deepseek-chat",
+        messages: [
+          { role: "system", content: "Gere um rascunho para revisão humana, em português. Retorne apenas um objeto JSON com modelo, marca, ano, categoria, combustivel, hibrido, potencia, torque, valorEstimado e descricao. Use campos vazios quando faltar certeza." },
+          { role: "user", content: query },
+        ],
+        temperature: 0.3,
+        max_tokens: 600,
+      }),
+      signal: AbortSignal.timeout(20000),
+    });
+    if (!response.ok) return unavailable();
+
+    const result = await response.json() as { choices?: { message?: { content?: string } }[] };
+    const content = result.choices?.[0]?.message?.content;
+    if (!content) return unavailable();
+    const draft: unknown = JSON.parse(content.trim().replace(/^```(?:json)?\s*|\s*```$/gi, ""));
+    if (!draft || typeof draft !== "object" || Array.isArray(draft) ||
+      !("marca" in draft) || typeof draft.marca !== "string" ||
+      !("modelo" in draft) || typeof draft.modelo !== "string") return unavailable();
+    return Response.json(draft);
+  } catch {
+    return unavailable();
+  }
 }
