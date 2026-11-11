@@ -4,6 +4,7 @@ import { Footer } from "@/components/layout/Footer";
 import { Hero } from "@/components/sections/Hero";
 import { FeaturedCars } from "@/components/sections/FeaturedCars";
 import { DNASection } from "@/components/sections/DNA";
+import { MotionExperience } from "@/components/sections/MotionExperience";
 
 export default function Home() {
   return (
@@ -11,6 +12,7 @@ export default function Home() {
       <Navbar />
       <Hero />
       <FeaturedCars />
+      <MotionExperience />
       <DNASection />
       <section className="border-t border-white/10 bg-[#d9d3c7] px-6 py-28 text-[#151719] sm:px-10 lg:px-20 lg:py-44">
         <div className="mx-auto max-w-[1440px]">
