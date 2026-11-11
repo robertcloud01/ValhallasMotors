@@ -1,125 +1,74 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import Link from "next/link";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { Button } from "@/components/ui/Button";
-import { ArrowRight, Play } from "@phosphor-icons/react";
+import AnimatedContent from "@/components/react-bits/AnimatedContent";
+
+gsap.registerPlugin(ScrollTrigger);
 
 export function Hero() {
-    const containerRef = useRef<HTMLDivElement>(null);
-    const textRef = useRef<HTMLDivElement>(null);
-    const videoRef = useRef<HTMLDivElement>(null);
+  const sectionRef = useRef<HTMLElement>(null);
+  const mediaRef = useRef<HTMLDivElement>(null);
 
-    useEffect(() => {
-        if (typeof window !== "undefined") {
-            gsap.registerPlugin(ScrollTrigger);
-        }
+  useEffect(() => {
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduce || !sectionRef.current || !mediaRef.current) return;
+    const ctx = gsap.context(() => {
+      gsap.to(mediaRef.current, {
+        yPercent: 12,
+        ease: "none",
+        scrollTrigger: { trigger: sectionRef.current, start: "top top", end: "bottom top", scrub: true }
+      });
+    }, sectionRef);
+    return () => ctx.revert();
+  }, []);
 
-        const tl = gsap.timeline();
+  return (
+    <section ref={sectionRef} aria-label="Valhallas Motors" className="relative isolate flex min-h-[790px] h-[100svh] flex-col overflow-hidden bg-[#090b0d] text-[#f3f1ed]">
+      <div ref={mediaRef} className="absolute inset-0 -top-[8%] h-[116%] w-full">
+        <video aria-hidden="true" autoPlay muted loop playsInline preload="metadata" className="absolute inset-0 h-full w-full object-cover">
+          <source src="/hero.mp4" type="video/mp4" />
+        </video>
+        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(4,6,8,.88)_0%,rgba(4,6,8,.42)_48%,rgba(4,6,8,.09)_100%)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(0deg,#090b0d_0%,transparent_32%,transparent_70%,rgba(4,6,8,.28)_100%)]" />
+      </div>
 
-        // Opening animation
-        const titleLines = textRef.current?.querySelectorAll(".animate-title-line");
-        const textElements = textRef.current?.querySelectorAll(".animate-text");
+      <div className="relative z-10 mx-auto flex w-full max-w-[1600px] flex-1 flex-col justify-center px-6 pb-24 pt-40 sm:px-10 lg:px-20">
+        <AnimatedContent trigger="mount" distance={28} duration={0.85} delay={0.15}>
+          <div className="mb-7 flex items-center gap-4 text-[10px] font-semibold uppercase tracking-[.34em] text-[#c9b18a]">
+            <span className="h-px w-8 bg-[#c9b18a]" />
+            Valhallas / Automotive Collection
+          </div>
+        </AnimatedContent>
 
-        if (titleLines && textElements) {
-            tl.to(titleLines, {
-                y: 0,
-                duration: 1.5,
-                stagger: 0.2,
-                ease: "power4.out",
-                delay: 0.2
-            })
-                .to(textElements, {
-                    opacity: 1,
-                    y: 0,
-                    duration: 1,
-                    stagger: 0.1,
-                    ease: "power3.out"
-                }, "-=1.0");
-        }
+        <h1 className="max-w-[1050px] font-display text-[clamp(4.3rem,10.5vw,11.5rem)] font-semibold uppercase leading-[.78] tracking-[-.075em]">
+          <AnimatedContent trigger="mount" distance={65} duration={1.05} delay={0.3}>
+            <span className="block">Beyond</span>
+          </AnimatedContent>
+          <AnimatedContent trigger="mount" distance={65} duration={1.05} delay={0.47}>
+            <span className="block italic font-light text-[#d6c1a1]">Ordinary.</span>
+          </AnimatedContent>
+        </h1>
 
-        // Parallax effect
-        gsap.to(videoRef.current, {
-            yPercent: 30,
-            ease: "none",
-            scrollTrigger: {
-                trigger: containerRef.current,
-                start: "top top",
-                end: "bottom top",
-                scrub: true,
-            },
-        });
-    }, []);
+        <div className="mt-10 flex max-w-3xl flex-col items-start justify-between gap-8 md:mt-14 md:flex-row md:items-end">
+          <AnimatedContent trigger="mount" distance={22} duration={0.9} delay={0.7} className="max-w-sm">
+            <p className="text-sm leading-relaxed text-white/65 sm:text-base">Uma visão editorial do extraordinário. Design, engenharia e presença em uma coleção automotiva conceitual.</p>
+          </AnimatedContent>
+          <AnimatedContent trigger="mount" distance={22} duration={0.9} delay={0.82}>
+            <Link href="/estoque" className="group inline-flex min-h-14 items-center gap-12 border-b border-[#c9b18a] py-3 text-xs font-semibold uppercase tracking-[.2em] transition-colors hover:text-[#c9b18a] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#c9b18a]">
+              Explorar coleção <span aria-hidden="true" className="text-xl transition-transform group-hover:translate-x-2">↗</span>
+            </Link>
+          </AnimatedContent>
+        </div>
+      </div>
 
-    return (
-        <section ref={containerRef} className="relative h-screen w-full overflow-hidden bg-petrol">
-            {/* Background Video Layer */}
-            <div ref={videoRef} className="absolute inset-0 w-full h-[120%] -top-[10%]">
-                <div className="absolute inset-0 bg-black/50 z-10" />
-                {/* Gradient Overlays for Cinematic Look */}
-                <div className="absolute inset-0 bg-gradient-to-t from-petrol via-petrol/20 to-transparent z-10 opacity-90" />
-                <div className="absolute inset-0 bg-gradient-to-r from-petrol via-transparent to-transparent z-10 opacity-80" />
-
-                <video
-                    autoPlay
-                    loop
-                    muted
-                    playsInline
-                    className="w-full h-full object-cover grayscale-[30%] scale-105"
-                >
-                    <source src="/hero.mp4" type="video/mp4" />
-                </video>
-            </div>
-
-            {/* Content */}
-            <div className="relative z-20 container mx-auto px-6 h-full flex flex-col justify-center items-start">
-                <div ref={textRef} className="max-w-5xl">
-                    <h2 className="flex items-center gap-4 text-gold uppercase tracking-[0.2em] mb-6 text-xs font-bold opacity-0 translate-y-4 animate-text">
-                        <span className="w-8 h-[1px] bg-gold" />
-                        Redefinindo o Extraordinário
-                    </h2>
-
-                    <h1 className="text-7xl md:text-9xl font-bold text-white mb-10 leading-[0.85] tracking-tighter font-display">
-                        <div className="overflow-hidden">
-                            <span className="block translate-y-full animate-title-line">A Arte da</span>
-                        </div>
-                        <div className="overflow-hidden">
-                            <span className="block translate-y-full animate-title-line text-transparent bg-clip-text text-gradient-silver">
-                                Velocidade
-                            </span>
-                        </div>
-                        <div className="overflow-hidden">
-                            <span className="block translate-y-full animate-title-line">
-                                Pura.
-                            </span>
-                        </div>
-                    </h1>
-
-                    <p className="opacity-0 translate-y-4 animate-text text-silver/70 text-lg md:text-xl max-w-xl mb-12 font-light leading-relaxed border-l border-gold/30 pl-8">
-                        Uma coleção curada das máquinas mais exclusivas do mundo.
-                        Design futurista, performance inigualável e luxo absoluto.
-                    </p>
-
-                    <div className="flex flex-wrap gap-6 opacity-0 translate-y-4 animate-text items-center">
-                        <Button href="/estoque" size="lg" rightIcon={<ArrowRight weight="bold" />}>
-                            Explorar Estoque
-                        </Button>
-
-                        <Button href="/contato" variant="outline" size="lg">
-                            Agendar Experience
-                        </Button>
-                    </div>
-                </div>
-            </div>
-
-            {/* Scroll Indicator */}
-            <div className="absolute bottom-12 right-10 z-20 flex flex-col items-center gap-4 opacity-0 animate-fade-in" style={{ animationDelay: '2s' }}>
-                <span className="text-[10px] uppercase tracking-widest text-silver/50 -rotate-90 origin-bottom-right translate-x-3">Scroll to Discover</span>
-                <div className="w-[1px] h-20 bg-gradient-to-b from-transparent via-gold to-transparent opacity-50 relative overflow-hidden">
-                    <div className="absolute top-0 left-0 w-full h-1/2 bg-white animate-slide-up" />
-                </div>
-            </div>
-        </section>
-    );
+      <div className="absolute bottom-9 left-6 right-6 z-10 flex items-end justify-between border-t border-white/20 pt-5 text-[10px] uppercase tracking-[.22em] text-white/60 sm:left-10 sm:right-10 lg:left-20 lg:right-20">
+        <span>Independent automotive concept / 2026</span>
+        <span className="hidden sm:block">Scroll to explore ↓</span>
+        <span>01 / 04</span>
+      </div>
+    </section>
+  );
 }
